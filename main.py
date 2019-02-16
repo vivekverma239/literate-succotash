@@ -21,7 +21,8 @@ def main(train_tsv_file,test_tsv_file,
          embedding_dim=300,
          validation_split=0.05,
          data_pickle_file='data/data.pkl',
-         use_pickled_data=True
+         use_pickled_data=True,
+         pairwise_loss=False
          ):
     """
         Function for model training
@@ -85,18 +86,26 @@ def main(train_tsv_file,test_tsv_file,
                       max_response_length=max_response_length,
                       max_vocab_size=max_vocab_size,
                       embedding_dim=300,
-                      embedding_weight=embedding_weight)
+                      embedding_weight=embedding_weight,
+                      pairwise_loss=pairwise_loss)
 
     # Making data generators
     train_generator = PairGenerator(doc1=train_queries,
                                      doc2=train_responses,
                                      y_true=y_train,
-                                     query_id=train_query_id).get_iterator(sample_queries)
+                                     query_id=train_query_id)
+
+    if pairwise_loss:
+        train_generator = train_generator.get_classification_iterator()
+    else:
+        train_generator = train_generator.get_iterator(sample_queries)
 
     valid_generator = PairGenerator(doc1=val_queries,
                                      doc2=val_responses,
                                      y_true=y_val,
                                      query_id=val_query_id).get_iterator_test()
+
+
 
     for i in range(epochs):
       model.fit_generator(train_generator,\

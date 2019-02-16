@@ -54,7 +54,8 @@ def get_model_v2(max_query_length,
                   max_response_length,
                   max_vocab_size,
                   embedding_dim=300,
-                  embedding_weight=None):
+                  embedding_weight=None,\
+                  pairwise_loss=False):
 
     query = Input(shape=(max_query_length,) )
     doc = Input(shape=(max_response_length,) )
@@ -75,8 +76,9 @@ def get_model_v2(max_query_length,
     pool1_flat = Flatten()(z)
     pool1_flat = Dense(50,activation='relu')(pool1_flat)
     pool1_flat_drop = Dropout(rate=0.5)(pool1_flat)
-    out_ = Dense(1)(pool1_flat_drop)
+    out_ = Dense(1,activation='sigmoid' if pairwise_loss else None)(pool1_flat_drop)
 
     model = Model(inputs=[query,doc],outputs=out_)
-    model.compile(optimizer='adadelta',loss=rank_hinge_loss())
+    model.compile(optimizer='adadelta',loss="binary_crossentropy" if pairwise_loss\
+                                        else rank_hinge_loss())
     return model
