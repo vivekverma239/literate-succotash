@@ -57,10 +57,10 @@ def get_model_v2(max_query_length,
                   embedding_weight=None,\
                   pairwise_loss=False):
 
-    query = Input(shape=(max_query_length,) )
-    doc = Input(shape=(max_response_length,) )
+    query = Input(shape=(max_query_length, ) )
+    doc = Input(shape=(max_response_length, ) )
 
-    embedding = Embedding(max_vocab_size, 300,weights=[embedding_weight] if embedding_weight is not None else None,
+    embedding = Embedding(max_vocab_size, 300, weights=[embedding_weight] if embedding_weight is not None else None,
                             trainable=False)
     q_embed = embedding(query)
     d_embed = embedding(doc)
@@ -69,7 +69,7 @@ def get_model_v2(max_query_length,
     d_embed = Dropout(rate=0.2)(d_embed)
 
 
-    rnn = Bidirectional(CuDNNLSTM(50,return_sequences=True))
+    rnn = Bidirectional(CuDNNLSTM(50, return_sequences=True))
 
     q_conv1 = rnn(q_embed)
     d_conv1 = rnn(d_embed)
@@ -82,7 +82,7 @@ def get_model_v2(max_query_length,
     pool1_flat_drop = Dropout(rate=0.2)(pool1_flat)
     out_ = Dense(1,activation='sigmoid' if pairwise_loss else None)(pool1_flat_drop)
 
-    model = Model(inputs=[query,doc],outputs=out_)
-    model.compile(optimizer='adadelta',loss="binary_crossentropy" if pairwise_loss\
+    model = Model(inputs=[query,doc], outputs=out_)
+    model.compile(optimizer='adam', loss="binary_crossentropy" if pairwise_loss\
                                         else rank_hinge_loss())
     return model
