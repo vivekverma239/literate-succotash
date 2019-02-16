@@ -5,7 +5,9 @@ import numpy as np
 
 from data_loader import _load_msai_data, PairGenerator, load_embedding
 from eval import eval_map
-from models import get_model_v1 as get_model
+# from models import get_model_v1 as get_model
+from models import get_model_v2 as get_model
+
 
 
 
