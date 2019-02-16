@@ -65,6 +65,10 @@ def get_model_v2(max_query_length,
     q_embed = embedding(query)
     d_embed = embedding(doc)
 
+    q_embed = Dropout(rate=0.2)(q_embed)
+    d_embed = Dropout(rate=0.2)(d_embed)
+
+
     rnn = Bidirectional(CuDNNLSTM(50,return_sequences=True))
 
     q_conv1 = rnn(q_embed)
@@ -75,7 +79,7 @@ def get_model_v2(max_query_length,
     z = Reshape((15, 50, 1))(cross)
     pool1_flat = Flatten()(z)
     pool1_flat = Dense(50,activation='relu')(pool1_flat)
-    pool1_flat_drop = Dropout(rate=0.5)(pool1_flat)
+    pool1_flat_drop = Dropout(rate=0.2)(pool1_flat)
     out_ = Dense(1,activation='sigmoid' if pairwise_loss else None)(pool1_flat_drop)
 
     model = Model(inputs=[query,doc],outputs=out_)
