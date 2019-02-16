@@ -69,14 +69,14 @@ def get_model_v2(max_query_length,
     d_embed = Dropout(rate=0.2)(d_embed)
 
 
-    rnn = Bidirectional(CuDNNLSTM(50, return_sequences=True))
+    rnn = Bidirectional(CuDNNLSTM(100, return_sequences=True))
 
     q_conv1 = rnn(q_embed)
     d_conv1 = rnn(d_embed)
 
     cross = Match(match_type='dot')([q_conv1, d_conv1])
 
-    z = Reshape((15, 50, 1))(cross)
+    z = Reshape((max_query_length, max_response_length, 1))(cross)
     pool1_flat = Flatten()(z)
     pool1_flat = Dense(50,activation='relu')(pool1_flat)
     pool1_flat_drop = Dropout(rate=0.2)(pool1_flat)
