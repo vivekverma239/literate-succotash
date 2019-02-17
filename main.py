@@ -4,9 +4,8 @@ import fire
 import numpy as np
 
 from data_loader import _load_msai_data, PairGenerator, load_embedding
-from eval import eval_map
-# from models import get_model_v1 as get_model
-from models import get_model_v3 as get_model
+from evaluation import eval_map
+from models import get_model_v2 as get_model
 
 
 
@@ -28,14 +27,17 @@ def main(train_tsv_file,test_tsv_file,
         Function for model training
 
         :params:
-            - train_tsv_file
-            - test_tsv_file
-            - max_vocab_size
-            - embedding_file_path
-            - max_query_length
-            - max_response_length
-            - embedding_dim
-            - validation_split
+            - train_tsv_file: Training CSV File
+            - test_tsv_file: Test CSV File, Predictions will be done on these
+            - max_vocab_size: Maximum Vocab Size to keep
+            - embedding_file_path: Glove Embedding File
+            - max_query_length: Max Query Length to consider, words will be trimmed after max_query_length
+            - max_response_length: Max Response Length to consider, words will be trimmed after max_response_length
+            - embedding_dim: Dimension of the embedding, should match with embedding file
+            - validation_split: Fraction of training data to take as validation set
+            - data_pickle_file: Processed data will be cached in this file (enables fast loading)
+            - use_pickled_data: Whether to use cached data or process from scratch
+            - pairwise_loss: Use pairwise_loss rather than ranking loss
     """
 
     word_index = None
@@ -105,14 +107,14 @@ def main(train_tsv_file,test_tsv_file,
                                      y_true=y_val,
                                      query_id=val_query_id).get_iterator_test()
 
-
-
+    # TODO Add some saver object and calleback also for evaluation
     for i in range(epochs):
       model.fit_generator(train_generator,\
                           epochs=1,
                           steps_per_epoch=10000,
                           validation_data=valid_generator,
                           validation_steps=1000)
+      # Calculating MAP of Validation set
       metrics = []
       count = 0
       for x,y in valid_generator:
@@ -122,6 +124,17 @@ def main(train_tsv_file,test_tsv_file,
         metrics.append(eval_map(y,y_pred))
         count += 1
       print('MAP : {}'.format(np.mean(metrics)))
+
+    # Load best model and predict
+    scores = model.predict([test_queries,test_responses])
+    scores = np.squeeze(scores)
+    scores = list(map(str, scores))
+    results_file = open("{}_results.tsv".format(test_tsv_file.split('.tsv')[0]), "w")
+    for idx, test_id in enumerate(test_query_id):
+        if idx % 10 == 0:
+            query_scores = "\t".join(scores[idx:idx+10])
+            results_file.write("{}\t{}\n".format(test_id, query_scores))
+    results_file.close()
 
 if __name__ == '__main__':
     fire.Fire(main)
