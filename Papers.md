@@ -13,3 +13,5 @@ Using Deep Neural Networks](https://arxiv.org/pdf/1811.04415.pdf)
 
 6. [Learning to Rank Short Text Pairs with Convolutional Deep Neural Networks
 ](https://www.semanticscholar.org/paper/Learning-to-Rank-Short-Text-Pairs-with-Deep-Neural-Severyn-Moschitti/73d826d4c2363701b88e3e234fe3b8756c0f9671)
+
+7. https://github.com/NTMC-Community/awaresome-neural-models-for-semantic-match
