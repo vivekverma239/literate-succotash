@@ -7,10 +7,15 @@ import sys
 from tensorflow.keras.preprocessing import text, sequence
 from tensorflow.keras.preprocessing.text import text_to_word_sequence
 
-def _split_and_pad(text, maxlen, tokenizer=text_to_word_sequence, pad_value='' ):
+def _split_and_pad(text, maxlen, tokenizer=None, pad_value='' ):
+    if tokenizer:
+        tokenized_text = tokenizer(text)
+    else:
+        tokenized_text = text.split(" ")
     split_text = (tokenizer(text) + [pad_value]*maxlen )[:maxlen]
     return split_text
 
+@profile
 def _load_msai_data(train_tsv_file,\
                     test_tsv_file,\
                     max_query_length=15,
@@ -29,10 +34,10 @@ def _load_msai_data(train_tsv_file,\
     """
     # Read data file and assign column names
     print("Reading train and test data...")
-    data = pd.read_csv(train_tsv_file, header=None, sep='\t')
+    data = pd.read_csv(train_tsv_file, header=None, sep='\t', nrows=1000000)
     data.columns = columns= ['query_id', 'query', 'response', 'target', 'response_id']
 
-    test_data = pd.read_csv(test_tsv_file, header=None, sep='\t')
+    test_data = pd.read_csv(test_tsv_file, header=None, sep='\t', nrows=1000000)
     test_data.columns = ['query_id', 'query', 'response', 'response_id']
     # Sample Validation Set
     query_ids = list(set(data['query_id'].tolist()))
