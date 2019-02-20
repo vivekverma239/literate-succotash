@@ -99,7 +99,7 @@ def get_model_with_elmo(max_query_length,
     doc = Input(shape=(max_response_length, ) )
 
     query_raw = Input(shape=(max_query_length, ), dtype="string" )
-    doc_raw = Input(shape=(max_query_length, ), dtype="string" )
+    doc_raw = Input(shape=(max_response_length, ), dtype="string" )
 
     embedding = Embedding(max_vocab_size, 300, weights=[embedding_weight] if embedding_weight is not None else None,
                             trainable=False)
@@ -112,7 +112,7 @@ def get_model_with_elmo(max_query_length,
 
     q_embed = Concatenate(axis=-1)([q_embed, q_embed_elmo])
     d_embed = Concatenate(axis=-1)([d_embed, d_embed_elmo])
-    
+
     q_embed = Dropout(rate=0.2)(q_embed)
     d_embed = Dropout(rate=0.2)(d_embed)
 

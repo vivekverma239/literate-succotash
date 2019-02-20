@@ -1,3 +1,4 @@
+import tensorflow as tf
 from tensorflow.python.keras.engine import Layer
 from tensorflow.python.keras.engine import InputSpec
 from tensorflow.keras import backend as K
@@ -123,19 +124,45 @@ class ElmoEmbeddingLayer(Layer):
     def build(self, input_shape):
         self.elmo = hub.Module('https://tfhub.dev/google/elmo/2', trainable=self.trainable,
                                name="{}_module".format(self.name))
-
-        self.trainable_weights += tf.trainable_variables(scope="^{}_module/.*".format(self.name))
+        self.trainable_weights.extend(tf.trainable_variables(scope="^{}_module/.*".format(self.name)))
         super(ElmoEmbeddingLayer, self).build(input_shape)
 
     def call(self, x, mask=None):
-        result = self.elmo(K.squeeze(K.cast(x, tf.string), axis=1),
+        seq_length = self.compute_length(x)
+        seq_length = K.stop_gradient(seq_length)
+        inputs={
+                    "tokens": x,
+                    "sequence_len": seq_length
+                }
+        result = self.elmo(inputs=inputs,
                       as_dict=True,
-                      signature='default',
-                      )['default']
+                      signature="tokens"
+                      )['elmo']
+        input_shape = x.get_shape()
+        result = K.reshape(result, [-1,\
+                                    int(input_shape[1]),\
+                                    int(result.get_shape()[-1])])
         return result
 
-    def compute_mask(self, inputs, mask=None):
-        return K.not_equal(inputs, '--PAD--')
+    def compute_length(self, inputs):
+        mask = K.not_equal(inputs, '--PAD--')
+        mask = K.cast(mask, tf.int32)
+        seq_length = K.sum(mask, axis=-1)
+        return seq_length
+
+    # def compute_mask(self, inputs, mask=None):
+    #     return K.not_equal(inputs, '--PAD--')
 
     def compute_output_shape(self, input_shape):
-        return (input_shape[0], self.dimensions)
+        return (input_shape[0], input_shape[1], self.dimensions)
+
+if __name__ == '__main__':
+    from tensorflow.keras.layers import Input
+    from tensorflow.keras.models import Model
+    import numpy as np
+    b = Input(batch_shape=(None, 5), dtype=tf.string)
+    a = ElmoEmbeddingLayer()(b  )
+    model = Model(inputs=b, outputs=a)
+    model.compile("adam", "categorical_crossentropy")
+    input_ = np.array([["This", "is", "not", "good", "--PAD--"]])
+    print(model.predict(input_))

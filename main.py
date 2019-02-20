@@ -104,8 +104,10 @@ def main(train_tsv_file,test_tsv_file,
     # Making data generators
     train_generator = PairGeneratorWithRaw(doc1=train_queries,
                                      doc2=train_responses,
-                                     doc1_raw=train_queries,
-                                     doc2_raw=train_responses,
+                                     doc1_raw=train_queries_raw,
+                                     doc2_raw=train_responses_raw,
+                                     doc1_raw_max_len=max_query_length,
+                                     doc2_raw_max_len=max_response_length,
                                      y_true=y_train,
                                      query_id=train_query_id)
 
@@ -116,8 +118,10 @@ def main(train_tsv_file,test_tsv_file,
 
     valid_generator = PairGeneratorWithRaw(doc1=val_queries,
                                      doc2=val_responses,
-                                     doc1_raw=val_queries,
-                                     doc2_raw=val_responses,
+                                     doc1_raw=val_queries_raw,
+                                     doc2_raw=val_responses_raw,
+                                      doc1_raw_max_len=max_query_length,
+                                      doc2_raw_max_len=max_response_length,
                                      y_true=y_val,
                                      query_id=val_query_id).get_iterator_test()
 
