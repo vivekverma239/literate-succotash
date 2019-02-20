@@ -11,7 +11,6 @@ def _split_and_pad(text, maxlen, tokenizer=text_to_word_sequence, pad_value='' )
     split_text = (tokenizer(text) + [pad_value]*maxlen )[:maxlen]
     return split_text
 
-@profile
 def _load_msai_data(train_tsv_file,\
                     test_tsv_file,\
                     max_query_length=15,
