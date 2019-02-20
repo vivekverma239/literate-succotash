@@ -1,10 +1,17 @@
 import random
 import pandas as pd
 import numpy as np
+from tqdm import tqdm
+import gc
+import sys
 from tensorflow.keras.preprocessing import text, sequence
 from tensorflow.keras.preprocessing.text import text_to_word_sequence
 
+def _split_and_pad(text, maxlen, tokenizer=text_to_word_sequence, pad_value='' ):
+    split_text = (tokenizer(text) + [pad_value]*maxlen )[:maxlen]
+    return split_text
 
+@profile
 def _load_msai_data(train_tsv_file,\
                     test_tsv_file,\
                     max_query_length=15,
@@ -22,10 +29,11 @@ def _load_msai_data(train_tsv_file,\
                                     upto this length
     """
     # Read data file and assign column names
+    print("Reading train and test data...")
     data = pd.read_csv(train_tsv_file, header=None, sep='\t')
     data.columns = columns= ['query_id', 'query', 'response', 'target', 'response_id']
 
-    test_data = pd.read_csv(test_tsv_file, header=None, sep='\t' )
+    test_data = pd.read_csv(test_tsv_file, header=None, sep='\t')
     test_data.columns = ['query_id', 'query', 'response', 'response_id']
     # Sample Validation Set
     query_ids = list(set(data['query_id'].tolist()))
@@ -37,6 +45,9 @@ def _load_msai_data(train_tsv_file,\
     train_data = data[flag_train]
     flag_val = [i in  sample_val for idx, i in enumerate(data['query_id'].tolist())]
     val_data = data[flag_val]
+
+    del data, train_ids, sample, sample_val, flag_train, flag_val
+    gc.collect()
 
     train_queries = train_data['query'].tolist()
     train_query_id = train_data['query_id'].tolist()
@@ -53,39 +64,74 @@ def _load_msai_data(train_tsv_file,\
     val_responses = val_data['response'].tolist()
     y_val = val_data['target']
 
-    train_queries_raw = sequence.pad_sequences([text_to_word_sequence(i) for i in train_queries], dtype=object, value="", max_len=max_query_length)
-    train_responses_raw = sequence.pad_sequences([text_to_word_sequence(i) for i in train_queries], dtype=object, value="", max_len=max_response_length)
-    test_queries_raw = sequence.pad_sequences([text_to_word_sequence(i) for i in train_queries], dtype=object, value="", max_len=max_query_length)
-    test_responses_raw = sequence.pad_sequences([text_to_word_sequence(i) for i in train_queries], dtype=object, value="", max_len=max_response_length)
-    val_queries_raw = sequence.pad_sequences([text_to_word_sequence(i) for i in train_queries], dtype=object, value="", max_len=max_query_length)
-    val_responses_raw = sequence.pad_sequences([text_to_word_sequence(i) for i in train_queries], dtype=object, value="", max_len=max_response_length)
+    del train_data, val_data, test_data
+    gc.collect()
 
+    default_split_and_pad_query = lambda x : _split_and_pad(x,
+                                                    maxlen=max_query_length,
+                                                    pad_value="--PAD--")
+    default_split_and_pad_response = lambda x : _split_and_pad(x,
+                                                    maxlen=max_response_length,
+                                                    pad_value="--PAD--")
+
+    print("Initlaizing the tokenizer..")
     tokenizer = text.Tokenizer(num_words=max_vocab_size)
     tokenizer.fit_on_texts(train_queries + train_responses )
 
+    print("Processing training data ...")
     # Processing Training Data
-    train_queries = tokenizer.texts_to_sequences(train_queries)
-    train_responses = tokenizer.texts_to_sequences(train_responses)
-    train_queries = sequence.pad_sequences(train_queries, maxlen=max_query_length)
-    train_responses = sequence.pad_sequences(train_responses, maxlen=max_response_length)
+    print("Converting into seq ids ..")
+    print("train_queries {0:.2f}".format(sys.getsizeof(train_queries)/10**6))
+    train_queries_ = tokenizer.texts_to_sequences(train_queries)
+    print("train_queries_ {0:.2f}".format(sys.getsizeof(train_queries_)/10**6))
+    print("Converting into seq raw tokens ..")
+    train_queries_raw = [default_split_and_pad_query(i) for i in tqdm(train_queries)]
+    print("train_queries_raw {0:.2f}".format(sys.getsizeof(train_queries_)/10**6))
+    del train_queries
+    gc.collect()
+    print("Converting into seq ids ..")
+    train_responses_ = tokenizer.texts_to_sequences(train_responses)
+    print("Converting into seq raw tokens ..")
+    train_responses_raw = [default_split_and_pad_response(i) for i in tqdm(train_responses)]
+    del train_responses
+    gc.collect()
+    train_queries_ = sequence.pad_sequences(train_queries_, maxlen=max_query_length)
+    train_responses_ = sequence.pad_sequences(train_responses_, maxlen=max_response_length)
 
+    print("Processing validation data ...")
     # Processing Validation Data
-    val_queries = tokenizer.texts_to_sequences(val_queries)
-    val_responses = tokenizer.texts_to_sequences(val_responses)
-    val_queries = sequence.pad_sequences(val_queries, maxlen=max_query_length)
-    val_responses = sequence.pad_sequences(val_responses, maxlen=max_response_length)
+    print("Converting into seq ids ..")
+    val_queries_ = tokenizer.texts_to_sequences(val_queries)
+    print("Converting into seq raw tokens ..")
+    val_queries_raw = [default_split_and_pad_query(i) for i in val_queries]
+    del val_queries
+    gc.collect()
+    print("Converting into seq ids ..")
+    val_responses_ = tokenizer.texts_to_sequences(val_responses)
+    print("Converting into seq raw tokens ..")
+    val_responses_raw = [default_split_and_pad_response(i) for i in val_responses]
+    del val_responses
+    gc.collect()
+    val_queries_ = sequence.pad_sequences(val_queries_, maxlen=max_query_length)
+    val_responses_ = sequence.pad_sequences(val_responses_, maxlen=max_response_length)
 
+    print("Processing test data ...")
     # Processing Test Data
-    test_queries = tokenizer.texts_to_sequences(test_queries)
-    test_responses = tokenizer.texts_to_sequences(test_responses)
-    test_queries = sequence.pad_sequences(test_queries, maxlen=max_query_length)
-    test_responses = sequence.pad_sequences(test_responses, maxlen=max_response_length)
+    test_queries_ = tokenizer.texts_to_sequences(test_queries)
+    test_queries_raw = [default_split_and_pad_query(i) for i in test_queries]
+    del test_queries
+    gc.collect()
+    test_responses_ = tokenizer.texts_to_sequences(test_responses)
+    test_responses_raw = [default_split_and_pad_response(i) for i in test_responses]
+    del test_responses
+    gc.collect()
+    test_queries_ = sequence.pad_sequences(test_queries_, maxlen=max_query_length)
+    test_responses_ = sequence.pad_sequences(test_responses_, maxlen=max_response_length)
 
 
-
-    return tokenizer.word_index, train_query_id, train_queries, train_responses, y_train,\
-            val_query_id, val_queries, val_responses, y_val,\
-            test_query_id, test_queries, test_responses, \
+    return tokenizer.word_index, train_query_id, train_queries_, train_responses_, y_train,\
+            val_query_id, val_queries_, val_responses_, y_val,\
+            test_query_id, test_queries_, test_responses_, \
             train_queries_raw, train_responses_raw,  val_queries_raw, val_responses_raw,\
             test_queries_raw, test_responses_raw
 
