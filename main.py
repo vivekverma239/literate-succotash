@@ -3,10 +3,12 @@ import pickle
 import fire
 import numpy as np
 
-from data_loader import _load_msai_data, PairGenerator, load_embedding
+from data_loader import _load_msai_data, PairGenerator, load_embedding, PairGeneratorWithRaw
 from evaluation import eval_map
-from models import get_model_v2 as get_model
+# from models import get_model_v2 as get_model
+from models import get_model_with_elmo as get_model
 
+# python main.py --train_tsv_file data/msai/data.tsv --test_tsv_file eval1_unlabelled.tsv --embedding_file_path /home/vivek/Projects/research/text_classification/data/glove/glove.840B.300d.txt
 
 
 
@@ -43,32 +45,40 @@ def main(train_tsv_file,test_tsv_file,
     word_index = None
     if use_pickled_data and os.path.exists(data_pickle_file):
         print("Loading Pickled Data...")
+        data = pickle.load(open(data_pickle_file,'rb'))
         word_index, train_query_id, train_queries,\
-        train_responses, y_train, val_query_id,\
-        val_queries, val_responses, y_val,\
-        test_query_id, test_queries, test_responses = pickle.load(open(data_pickle_file,'rb'))
+        train_responses, y_train,\
+        val_query_id, val_queries, val_responses, y_val,\
+        test_query_id, test_queries, test_responses, \
+        train_queries_raw, train_responses_raw,\
+        val_queries_raw, val_responses_raw,\
+        test_queries_raw, test_responses_raw = data
 
     else:
         # Load and process all the data
-        word_index, train_query_id,\
-        train_queries, train_responses,\
-        y_train, val_query_id,\
-        val_queries, val_responses,\
-        y_val, test_query_id,\
-        test_queries, test_responses = _load_msai_data(
+        word_index, train_query_id, train_queries,\
+        train_responses, y_train,\
+        val_query_id, val_queries, val_responses, y_val,\
+        test_query_id, test_queries, test_responses, \
+        train_queries_raw, train_responses_raw,\
+        val_queries_raw, val_responses_raw,\
+        test_queries_raw, test_responses_raw = _load_msai_data(
                                             train_tsv_file=train_tsv_file,
                                             test_tsv_file=test_tsv_file,
                                             max_query_length=max_query_length,
                                             max_response_length=max_response_length,
                                             max_vocab_size=max_vocab_size,
-                                            validation_split=validation_split
+                                            validation_split=validation_split,
                                             )
 
         pickle.dump(
-                     [word_index, train_query_id, train_queries,
-                     train_responses, y_train, val_query_id,
-                     val_queries, val_responses, y_val,\
-                     test_query_id, test_queries, test_responses],
+                    [word_index, train_query_id, train_queries,\
+                     train_responses, y_train,\
+                     val_query_id, val_queries, val_responses, y_val,\
+                     test_query_id, test_queries, test_responses, \
+                     train_queries_raw, train_responses_raw,\
+                     val_queries_raw, val_responses_raw,\
+                     test_queries_raw, test_responses_raw],
                      open(data_pickle_file,"wb")
                     )
 
@@ -92,8 +102,10 @@ def main(train_tsv_file,test_tsv_file,
                       pairwise_loss=pairwise_loss)
 
     # Making data generators
-    train_generator = PairGenerator(doc1=train_queries,
+    train_generator = PairGeneratorWithRaw(doc1=train_queries,
                                      doc2=train_responses,
+                                     doc1_raw=train_queries,
+                                     doc2_raw=train_responses,
                                      y_true=y_train,
                                      query_id=train_query_id)
 
@@ -102,8 +114,10 @@ def main(train_tsv_file,test_tsv_file,
     else:
         train_generator = train_generator.get_iterator(sample_queries)
 
-    valid_generator = PairGenerator(doc1=val_queries,
+    valid_generator = PairGeneratorWithRaw(doc1=val_queries,
                                      doc2=val_responses,
+                                     doc1_raw=val_queries,
+                                     doc2_raw=val_responses,
                                      y_true=y_val,
                                      query_id=val_query_id).get_iterator_test()
 

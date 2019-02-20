@@ -2,6 +2,7 @@ import random
 import pandas as pd
 import numpy as np
 from tensorflow.keras.preprocessing import text, sequence
+from tensorflow.keras.preprocessing.text import text_to_word_sequence
 
 
 def _load_msai_data(train_tsv_file,\
@@ -21,10 +22,10 @@ def _load_msai_data(train_tsv_file,\
                                     upto this length
     """
     # Read data file and assign column names
-    data = pd.read_csv(train_tsv_file, header=None, sep='\t')
+    data = pd.read_csv(train_tsv_file, header=None, sep='\t', nrows=100)
     data.columns = columns= ['query_id', 'query', 'response', 'target', 'response_id']
 
-    test_data = pd.read_csv(test_tsv_file, header=None, sep='\t')
+    test_data = pd.read_csv(test_tsv_file, header=None, sep='\t' , nrows=100)
     test_data.columns = ['query_id', 'query', 'response', 'response_id']
     # Sample Validation Set
     query_ids = list(set(data['query_id'].tolist()))
@@ -52,6 +53,12 @@ def _load_msai_data(train_tsv_file,\
     val_responses = val_data['response'].tolist()
     y_val = val_data['target']
 
+    train_queries_raw = sequence.pad_sequences([text_to_word_sequence(i) for i in train_queries], dtype=object, value="")
+    train_responses_raw = sequence.pad_sequences([text_to_word_sequence(i) for i in train_queries], dtype=object, value="")
+    test_queries_raw = sequence.pad_sequences([text_to_word_sequence(i) for i in train_queries], dtype=object, value="")
+    test_responses_raw = sequence.pad_sequences([text_to_word_sequence(i) for i in train_queries], dtype=object, value="")
+    val_queries_raw = sequence.pad_sequences([text_to_word_sequence(i) for i in train_queries], dtype=object, value="")
+    val_responses_raw = sequence.pad_sequences([text_to_word_sequence(i) for i in train_queries], dtype=object, value="")
 
     tokenizer = text.Tokenizer(num_words=max_vocab_size)
     tokenizer.fit_on_texts(train_queries + train_responses )
@@ -74,9 +81,16 @@ def _load_msai_data(train_tsv_file,\
     test_queries = sequence.pad_sequences(test_queries, maxlen=max_query_length)
     test_responses = sequence.pad_sequences(test_responses, maxlen=max_response_length)
 
+
+
     return tokenizer.word_index, train_query_id, train_queries, train_responses, y_train,\
             val_query_id, val_queries, val_responses, y_val,\
-            test_query_id, test_queries, test_responses
+            test_query_id, test_queries, test_responses, \
+            train_queries_raw, train_responses_raw,  val_queries_raw, val_responses_raw,\
+            test_queries_raw, test_responses_raw
+
+
+
 
 
 
@@ -86,7 +100,10 @@ class PairGenerator():
     """
         Helper Class for pairwise training of query , response documents
     """
-    def __init__(self,doc1,doc2,y_true,query_id):
+    def __init__(self, doc1, doc2, y_true, query_id):
+        """
+
+        """
         self.num_negative = 6
         self.query_dict = {}
         for query, x1, x2, y in zip(query_id,doc1,doc2,y_true):
@@ -98,6 +115,75 @@ class PairGenerator():
           else:
             temp = item.get('neg',[])
             temp.append((x1,x2))
+            item['neg'] = temp
+          self.query_dict[query] = item
+
+    def get_iterator(self,sample_queries=20):
+        while True:
+          sampled_queries = random.sample(self.query_dict.keys(),sample_queries)
+          x = []
+          for key in sampled_queries:
+            item = self.query_dict[key]
+            pos = item.get('pos',[])
+            neg = item.get('neg',[])
+            if pos and len(neg) > self.num_negative:
+              x.extend(random.sample(pos,1))
+              x.extend(random.sample(neg,self.num_negative))
+          temp =  list(zip(*x))
+          temp_y = np.array([1]* len(temp[0]))
+          yield [np.array(temp[0]), np.array(temp[1])] , temp_y
+
+    def get_iterator_test(self):
+        while True:
+          x = []
+          for key in self.query_dict.keys():
+            item = self.query_dict[key]
+            x = item.get('pos',[])  + item.get('neg',[])
+            y = [1 for _ in  item.get('pos',[])] + [0 for _ in  item.get('neg',[])]
+            temp =  list(zip(*x))
+            yield [np.array(temp[0]), np.array(temp[1])] , y
+
+
+    def get_classification_iterator(self,sample_queries=50):
+        while True:
+          sampled_queries = random.sample(self.query_dict.keys(),sample_queries)
+          x = []
+          y = []
+          for key in sampled_queries:
+            item = self.query_dict[key]
+            pos = item.get('pos',[])
+            neg = item.get('neg',[])
+            if pos and len(neg) > self.num_negative:
+              x.extend(random.sample(pos,1))
+              y.append(1)
+              x.extend(random.sample(neg,self.num_negative))
+              y.extend([0 for _ in range(self.num_negative)])
+          temp =  list(zip(*x))
+          temp_y = np.array([1]* len(temp[0]))
+          yield [np.array(temp[0]), np.array(temp[1])] , y
+
+
+class PairGeneratorWithRaw():
+    """
+        Helper Class for pairwise training of query , response documents
+    """
+    def __init__(self, doc1, doc2, y_true, query_id, doc1_raw, doc2_raw):
+        """
+
+        """
+        self.num_negative = 6
+        self.query_dict = {}
+
+        zipped_items = zip(query_id,doc1,doc2,y_true,doc1_raw, doc2_raw)
+        for query, x1, x2, y, x1_raw, x2_raw in zipped_items:
+          item = self.query_dict.get(query,{})
+          if y > 0:
+            temp = item.get('pos',[])
+            temp.append((x1, x2, x1_raw, x2_raw))
+            item['pos'] = temp
+          else:
+            temp = item.get('neg',[])
+            temp.append((x1, x2, x1_raw, x2_raw))
             item['neg'] = temp
           self.query_dict[query] = item
 
