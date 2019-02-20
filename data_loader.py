@@ -53,12 +53,12 @@ def _load_msai_data(train_tsv_file,\
     val_responses = val_data['response'].tolist()
     y_val = val_data['target']
 
-    train_queries_raw = sequence.pad_sequences([text_to_word_sequence(i) for i in train_queries], dtype=object, value="")
-    train_responses_raw = sequence.pad_sequences([text_to_word_sequence(i) for i in train_queries], dtype=object, value="")
-    test_queries_raw = sequence.pad_sequences([text_to_word_sequence(i) for i in train_queries], dtype=object, value="")
-    test_responses_raw = sequence.pad_sequences([text_to_word_sequence(i) for i in train_queries], dtype=object, value="")
-    val_queries_raw = sequence.pad_sequences([text_to_word_sequence(i) for i in train_queries], dtype=object, value="")
-    val_responses_raw = sequence.pad_sequences([text_to_word_sequence(i) for i in train_queries], dtype=object, value="")
+    train_queries_raw = sequence.pad_sequences([text_to_word_sequence(i) for i in train_queries], dtype=object, value="", max_len=max_query_length)
+    train_responses_raw = sequence.pad_sequences([text_to_word_sequence(i) for i in train_queries], dtype=object, value="", max_len=max_response_length)
+    test_queries_raw = sequence.pad_sequences([text_to_word_sequence(i) for i in train_queries], dtype=object, value="", max_len=max_query_length)
+    test_responses_raw = sequence.pad_sequences([text_to_word_sequence(i) for i in train_queries], dtype=object, value="", max_len=max_response_length)
+    val_queries_raw = sequence.pad_sequences([text_to_word_sequence(i) for i in train_queries], dtype=object, value="", max_len=max_query_length)
+    val_responses_raw = sequence.pad_sequences([text_to_word_sequence(i) for i in train_queries], dtype=object, value="", max_len=max_response_length)
 
     tokenizer = text.Tokenizer(num_words=max_vocab_size)
     tokenizer.fit_on_texts(train_queries + train_responses )
