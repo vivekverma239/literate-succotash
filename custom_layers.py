@@ -115,16 +115,16 @@ def match(inputs, axes, normalize=False, match_type='dot', **kwargs):
 
 
 class ElmoEmbeddingLayer(Layer):
-    def __init__(self, **kwargs):
+    def __init__(self, trainable=False, **kwargs):
         self.dimensions = 1024
-        self.trainable=True
+        self.trainable = trainable
         super(ElmoEmbeddingLayer, self).__init__(**kwargs)
 
     def build(self, input_shape):
         self.elmo = hub.Module('https://tfhub.dev/google/elmo/2', trainable=self.trainable,
                                name="{}_module".format(self.name))
 
-        self.trainable_weights += K.tf.trainable_variables(scope="^{}_module/.*".format(self.name))
+        self.trainable_weights += tf.trainable_variables(scope="^{}_module/.*".format(self.name))
         super(ElmoEmbeddingLayer, self).build(input_shape)
 
     def call(self, x, mask=None):
