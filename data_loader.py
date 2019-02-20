@@ -22,10 +22,10 @@ def _load_msai_data(train_tsv_file,\
                                     upto this length
     """
     # Read data file and assign column names
-    data = pd.read_csv(train_tsv_file, header=None, sep='\t', nrows=100)
+    data = pd.read_csv(train_tsv_file, header=None, sep='\t')
     data.columns = columns= ['query_id', 'query', 'response', 'target', 'response_id']
 
-    test_data = pd.read_csv(test_tsv_file, header=None, sep='\t' , nrows=100)
+    test_data = pd.read_csv(test_tsv_file, header=None, sep='\t' )
     test_data.columns = ['query_id', 'query', 'response', 'response_id']
     # Sample Validation Set
     query_ids = list(set(data['query_id'].tolist()))
