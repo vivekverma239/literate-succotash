@@ -186,10 +186,10 @@ class PairGeneratorWithRaw():
         self.num_negative = 6
         self.query_dict = {}
 
-        default_split_and_pad_query = lambda x : _split_and_pad(x,
+        self.default_split_and_pad_query = lambda x : _split_and_pad(x,
                                                         maxlen=doc1_raw_max_len,
                                                         pad_value="--PAD--")
-        default_split_and_pad_response = lambda x : _split_and_pad(x,
+        self.default_split_and_pad_response = lambda x : _split_and_pad(x,
                                                         maxlen=doc2_raw_max_len,
                                                         pad_value="--PAD--")
         zipped_items = zip(query_id,doc1,doc2,y_true,doc1_raw, doc2_raw)
@@ -198,13 +198,13 @@ class PairGeneratorWithRaw():
           if y > 0:
             temp = item.get('pos',[])
             temp.append((x1, x2,
-                        default_split_and_pad_query(x1_raw),
-                        default_split_and_pad_response(x2_raw)))
+                        x1_raw,
+                        x2_raw))
             item['pos'] = temp
           else:
             temp = item.get('neg',[])
-            temp.append((x1, x2, default_split_and_pad_query(x1_raw),
-                                default_split_and_pad_response(x2_raw)))
+            temp.append((x1, x2, x1_raw,
+                                x2_raw))
             item['neg'] = temp
           self.query_dict[query] = item
 
@@ -220,6 +220,8 @@ class PairGeneratorWithRaw():
               x.extend(random.sample(pos,1))
               x.extend(random.sample(neg,self.num_negative))
           temp =  list(zip(*x))
+          temp[-1] = self.default_split_and_pad_response(temp[-1])
+          temp[-2]= self.default_split_and_pad_querry(temp[-2])
           temp =  list(map(np.array, temp))
           temp_y = np.array([1]* len(temp[0]))
           yield temp , temp_y
@@ -232,6 +234,8 @@ class PairGeneratorWithRaw():
             x = item.get('pos',[])  + item.get('neg',[])
             y = [1 for _ in  item.get('pos',[])] + [0 for _ in  item.get('neg',[])]
             temp =  list(zip(*x))
+            temp[-1] = self.default_split_and_pad_response(temp[-1])
+            temp[-2]= self.default_split_and_pad_querry(temp[-2])
             temp =  list(map(np.array, temp))
             yield temp , y
 
@@ -250,6 +254,8 @@ class PairGeneratorWithRaw():
               y.append(1)
               x.extend(random.sample(neg,self.num_negative))
               y.extend([0 for _ in range(self.num_negative)])
+          temp[-1] = self.default_split_and_pad_response(temp[-1])
+          temp[-2]= self.default_split_and_pad_querry(temp[-2])
           temp =  list(zip(*x))
           temp =  list(map(np.array, temp))
           temp_y = np.array([1]* len(temp[0]))
