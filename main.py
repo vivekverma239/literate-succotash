@@ -112,9 +112,10 @@ def main(train_tsv_file,test_tsv_file,
                                      query_id=train_query_id)
 
     if pairwise_loss:
-        train_generator = train_generator.get_classification_iterator()
-    else:
         train_generator = train_generator.get_iterator(sample_queries)
+    else:
+        train_generator = train_generator.get_classification_iterator()
+
 
     valid_generator = PairGeneratorWithRaw(doc1=val_queries,
                                      doc2=val_responses,

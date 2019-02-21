@@ -220,8 +220,8 @@ class PairGeneratorWithRaw():
               x.extend(random.sample(pos,1))
               x.extend(random.sample(neg,self.num_negative))
           temp =  list(zip(*x))
-          temp[-1] = self.default_split_and_pad_response(temp[-1])
-          temp[-2]= self.default_split_and_pad_querry(temp[-2])
+          temp[-1] = list(map(self.default_split_and_pad_response,temp[-1]))
+          temp[-2]= list(map(self.default_split_and_pad_query,temp[-1]))
           temp =  list(map(np.array, temp))
           temp_y = np.array([1]* len(temp[0]))
           yield temp , temp_y
@@ -234,8 +234,8 @@ class PairGeneratorWithRaw():
             x = item.get('pos',[])  + item.get('neg',[])
             y = [1 for _ in  item.get('pos',[])] + [0 for _ in  item.get('neg',[])]
             temp =  list(zip(*x))
-            temp[-1] = self.default_split_and_pad_response(temp[-1])
-            temp[-2]= self.default_split_and_pad_querry(temp[-2])
+            temp[-1] = list(map(self.default_split_and_pad_response,temp[-1]))
+            temp[-2]= list(map(self.default_split_and_pad_query,temp[-1]))
             temp =  list(map(np.array, temp))
             yield temp , y
 
@@ -254,9 +254,11 @@ class PairGeneratorWithRaw():
               y.append(1)
               x.extend(random.sample(neg,self.num_negative))
               y.extend([0 for _ in range(self.num_negative)])
-          temp[-1] = self.default_split_and_pad_response(temp[-1])
-          temp[-2]= self.default_split_and_pad_querry(temp[-2])
+
           temp =  list(zip(*x))
+          temp[-1] = list(map(self.default_split_and_pad_response,temp[-1]))
+          temp[-2]= list(map(self.default_split_and_pad_query,temp[-1]))
+
           temp =  list(map(np.array, temp))
           temp_y = np.array([1]* len(temp[0]))
           yield temp , y
