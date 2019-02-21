@@ -1,5 +1,5 @@
-from tensorflow.keras import backend as K
-from tensorflow.keras.layers import Lambda
+from keras import backend as K
+from keras.layers import Lambda
 
 # Define Hinge Loss for Ranking
 def rank_hinge_loss(num_negative=6):

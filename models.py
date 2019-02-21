@@ -1,6 +1,6 @@
-from tensorflow.keras import backend as K
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, Dense, Embedding, Concatenate, \
+from keras import backend as K
+from keras.models import Model
+from keras.layers import Input, Dense, Embedding, Concatenate, \
                                     CuDNNGRU, Bidirectional, Dense, \
                                     GlobalAveragePooling1D, GlobalMaxPooling1D,\
                                     Conv1D, LSTM, Add, BatchNormalization,\

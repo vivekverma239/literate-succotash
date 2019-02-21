@@ -1,7 +1,7 @@
 import tensorflow as tf
-from tensorflow.python.keras.engine import Layer
-from tensorflow.python.keras.engine import InputSpec
-from tensorflow.keras import backend as K
+from keras.engine import Layer
+from keras.engine import InputSpec
+from keras import backend as K
 
 import tensorflow_hub as hub
 
@@ -157,8 +157,8 @@ class ElmoEmbeddingLayer(Layer):
         return (input_shape[0], input_shape[1], self.dimensions)
 
 if __name__ == '__main__':
-    from tensorflow.keras.layers import Input
-    from tensorflow.keras.models import Model
+    from keras.layers import Input
+    from keras.models import Model
     import numpy as np
     b = Input(batch_shape=(None, 5), dtype=tf.string)
     a = ElmoEmbeddingLayer()(b  )
