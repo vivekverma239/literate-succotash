@@ -33,10 +33,10 @@ def _load_msai_data(train_tsv_file,\
     """
     # Read data file and assign column names
     print("Reading train and test data...")
-    data = pd.read_csv(train_tsv_file, header=None, sep='\t')
+    data = pd.read_csv(train_tsv_file, header=None, sep='\t', nrows=10000)
     data.columns = columns= ['query_id', 'query', 'response', 'target', 'response_id']
 
-    test_data = pd.read_csv(test_tsv_file, header=None, sep='\t')
+    test_data = pd.read_csv(test_tsv_file, header=None, sep='\t', nrows=10000)
     test_data.columns = ['query_id', 'query', 'response', 'response_id']
     # Sample Validation Set
     query_ids = list(set(data['query_id'].tolist()))
@@ -221,7 +221,7 @@ class PairGeneratorWithRaw():
               x.extend(random.sample(neg,self.num_negative))
           temp =  list(zip(*x))
           temp[-1] = list(map(self.default_split_and_pad_response,temp[-1]))
-          temp[-2]= list(map(self.default_split_and_pad_query,temp[-1]))
+          temp[-2]= list(map(self.default_split_and_pad_query,temp[-2]))
           temp =  list(map(np.array, temp))
           temp_y = np.array([1]* len(temp[0]))
           yield temp , temp_y
@@ -235,7 +235,7 @@ class PairGeneratorWithRaw():
             y = [1 for _ in  item.get('pos',[])] + [0 for _ in  item.get('neg',[])]
             temp =  list(zip(*x))
             temp[-1] = list(map(self.default_split_and_pad_response,temp[-1]))
-            temp[-2]= list(map(self.default_split_and_pad_query,temp[-1]))
+            temp[-2]= list(map(self.default_split_and_pad_query,temp[-2]))
             temp =  list(map(np.array, temp))
             yield temp , y
 
@@ -256,8 +256,8 @@ class PairGeneratorWithRaw():
               y.extend([0 for _ in range(self.num_negative)])
 
           temp =  list(zip(*x))
-          temp[-1] = list(map(self.default_split_and_pad_response,temp[-1]))
-          temp[-2]= list(map(self.default_split_and_pad_query,temp[-1]))
+          temp[-1] = list(map(self.default_split_and_pad_response, temp[-1]))
+          temp[-2]= list(map(self.default_split_and_pad_query, temp[-2]))
 
           temp =  list(map(np.array, temp))
           temp_y = np.array([1]* len(temp[0]))
