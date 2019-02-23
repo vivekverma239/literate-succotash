@@ -1,6 +1,6 @@
-from keras import backend as K
-from keras.models import Model
-from keras.layers import Input, Dense, Embedding, Concatenate, \
+from tensorflow.keras import backend as K
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Dense, Embedding, Concatenate, \
                                     CuDNNGRU, Bidirectional, Dense, \
                                     GlobalAveragePooling1D, GlobalMaxPooling1D,\
                                     Conv1D, LSTM, Add, BatchNormalization,\
@@ -56,8 +56,8 @@ def get_model_v2(max_query_length,
                   embedding_weight=None,\
                   pairwise_loss=False):
 
-    query = Input(shape=(max_query_length, ) )
-    doc = Input(shape=(max_response_length, ) )
+    query = Input(batch_shape=(None, max_query_length, ) )
+    doc = Input(batch_shape=(None, max_response_length, ) )
 
     embedding = Embedding(max_vocab_size, 300, weights=[embedding_weight] if embedding_weight is not None else None,
                             trainable=False)
@@ -79,11 +79,11 @@ def get_model_v2(max_query_length,
     pool1_flat = Flatten()(z)
     pool1_flat = Dense(50,activation='relu')(pool1_flat)
     pool1_flat_drop = Dropout(rate=0.2)(pool1_flat)
-    out_ = Dense(1,activation='sigmoid' if pairwise_loss else None)(pool1_flat_drop)
+    out_ = Dense(1,activation='sigmoid' if not pairwise_loss else None)(pool1_flat_drop)
 
     model = Model(inputs=[query,doc], outputs=out_)
-    model.compile(optimizer='adam', loss="binary_crossentropy" if pairwise_loss\
-                                        else rank_hinge_loss())
+    model.compile(optimizer='adam', loss="binary_crossentropy" if not pairwise_loss\
+                                        else 'hinge', metrics=["acc"])
     return model
 
 
@@ -131,6 +131,6 @@ def get_model_with_elmo(max_query_length,
     out_ = Dense(1,activation='sigmoid' if pairwise_loss else None)(pool1_flat_drop)
 
     model = Model(inputs=[query,doc, query_raw, doc_raw], outputs=out_)
-    model.compile(optimizer='adam', loss="binary_crossentropy" if pairwise_loss\
-                                        else rank_hinge_loss())
+    model.compile(optimizer='adam', loss="binary_crossentropy" if not pairwise_loss\
+                                        else 'hinge')
     return model

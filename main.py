@@ -5,8 +5,11 @@ import numpy as np
 
 from data_loader import _load_msai_data, PairGenerator, load_embedding, PairGeneratorWithRaw
 from evaluation import eval_map
+# from tf.keras.callbacks import LambdaCallback
+# from tf.keras.backend import K
 # from models import get_model_v2 as get_model
 from models import get_model_with_elmo as get_model
+from utils import MSAIDataLoader
 
 # python main.py --train_tsv_file data/msai/data.tsv --test_tsv_file eval1_unlabelled.tsv --embedding_file_path /home/vivek/Projects/research/text_classification/data/glove/glove.840B.300d.txt
 
@@ -17,7 +20,7 @@ def main(train_tsv_file,test_tsv_file,
          max_vocab_size=50000,
          embedding_file_path='data/glove/glove.6B.300d.txt',
          max_query_length=15,
-         max_response_length=50,
+         max_response_length=70,
          sample_queries=50,
          embedding_dim=300,
          validation_split=0.05,
@@ -43,44 +46,8 @@ def main(train_tsv_file,test_tsv_file,
     """
 
     word_index = None
-    if use_pickled_data and os.path.exists(data_pickle_file):
-        print("Loading Pickled Data...")
-        data = pickle.load(open(data_pickle_file,'rb'))
-        word_index, train_query_id, train_queries,\
-        train_responses, y_train,\
-        val_query_id, val_queries, val_responses, y_val,\
-        test_query_id, test_queries, test_responses, \
-        train_queries_raw, train_responses_raw,\
-        val_queries_raw, val_responses_raw,\
-        test_queries_raw, test_responses_raw = data
-
-    else:
-        # Load and process all the data
-        word_index, train_query_id, train_queries,\
-        train_responses, y_train,\
-        val_query_id, val_queries, val_responses, y_val,\
-        test_query_id, test_queries, test_responses, \
-        train_queries_raw, train_responses_raw,\
-        val_queries_raw, val_responses_raw,\
-        test_queries_raw, test_responses_raw = _load_msai_data(
-                                            train_tsv_file=train_tsv_file,
-                                            test_tsv_file=test_tsv_file,
-                                            max_query_length=max_query_length,
-                                            max_response_length=max_response_length,
-                                            max_vocab_size=max_vocab_size,
-                                            validation_split=validation_split,
-                                            )
-
-        pickle.dump(
-                    [word_index, train_query_id, train_queries,\
-                     train_responses, y_train,\
-                     val_query_id, val_queries, val_responses, y_val,\
-                     test_query_id, test_queries, test_responses, \
-                     train_queries_raw, train_responses_raw,\
-                     val_queries_raw, val_responses_raw,\
-                     test_queries_raw, test_responses_raw],
-                     open(data_pickle_file,"wb")
-                    )
+    data_loader = MSAIDataLoader(max_query_length=max_query_length, max_document_length=max_response_length )
+    word_index = data_loader.tokenizer.word_index
 
     # Limit word Vocab to Max Vocab
     word_index = {k:v for k,v in word_index.items() if v < max_vocab_size}
@@ -98,62 +65,71 @@ def main(train_tsv_file,test_tsv_file,
                       max_response_length=max_response_length,
                       max_vocab_size=max_vocab_size,
                       embedding_dim=300,
-                      embedding_weight=embedding_weight,
-                      pairwise_loss=pairwise_loss)
+                      embedding_weight=embedding_weight)
 
-    # Making data generators
-    train_generator = PairGeneratorWithRaw(doc1=train_queries,
-                                     doc2=train_responses,
-                                     doc1_raw=train_queries_raw,
-                                     doc2_raw=train_responses_raw,
-                                     doc1_raw_max_len=max_query_length,
-                                     doc2_raw_max_len=max_response_length,
-                                     y_true=y_train,
-                                     query_id=train_query_id)
+    # train_generator = data_loader.data_iterator('data/train.tsv', raw_fields=False, neg_prob=0.3, batch_size=128)
+    # valid_generator = data_loader.data_iterator('data/valid.tsv', raw_fields=False, batch_size=10)
 
-    if pairwise_loss:
-        train_generator = train_generator.get_iterator(sample_queries)
-    else:
-        train_generator = train_generator.get_classification_iterator()
-
-
-    valid_generator = PairGeneratorWithRaw(doc1=val_queries,
-                                     doc2=val_responses,
-                                     doc1_raw=val_queries_raw,
-                                     doc2_raw=val_responses_raw,
-                                      doc1_raw_max_len=max_query_length,
-                                      doc2_raw_max_len=max_response_length,
-                                     y_true=y_val,
-                                     query_id=val_query_id).get_iterator_test()
+    train_generator = data_loader.tf_data_iterator('data/train.tsv', raw_fields=True, neg_prob=0.3, batch_size=128)
+    valid_batch_size = 1024
+    valid_generator = data_loader.tf_data_iterator('data/valid.tsv', raw_fields=True, batch_size=valid_batch_size, shuffle=False)
+    from tqdm import tqdm
+    temp_iterator = data_loader.data_iterator('data/valid.tsv', raw_fields=False)
+    valid_steps = data_loader.get_number_of_steps('data/valid.tsv', batch_size=1)
+    y_valid = []
+    for y_ in tqdm(temp_iterator):
+        if len(y_valid) == valid_steps:
+            break
+        y_valid.append(y_[-1])
 
     # TODO Add some saver object and calleback also for evaluation
+    # init_callback = LambdaCallback(
+    #                 on_train_start=lambda logs : K.default_session() )
+    # callbacks = []
     for i in range(epochs):
-      model.fit_generator(train_generator,\
+    #   model.fit_generator(train_generator,\
+    #                       epochs=1,
+    #                       steps_per_epoch=10000,
+    #                       validation_data=valid_generator,
+    #                       validation_steps=1000)
+
+      # Calculating MAP of Validation set
+    #   metrics = []
+    #   count = 0
+    #   for x,y in valid_generator:
+    #     if count == 10000:
+    #       break
+    #     y_pred = model.predict(x)
+    #     metrics.append(eval_map(y,y_pred))
+    #     count += 1
+    #   print('MAP : {}'.format(np.mean(metrics)))
+
+        model.fit(train_generator,\
                           epochs=1,
                           steps_per_epoch=10000,
                           validation_data=valid_generator,
                           validation_steps=1000)
+        import math
+        y_valid_pred = model.predict(valid_generator, steps=math.ceil(valid_steps/valid_batch_size), verbose=1)
       # Calculating MAP of Validation set
-      metrics = []
-      count = 0
-      for x,y in valid_generator:
-        if count == 10000:
-          break
-        y_pred = model.predict(x)
-        metrics.append(eval_map(y,y_pred))
-        count += 1
-      print('MAP : {}'.format(np.mean(metrics)))
+        metrics = []
+        count = 0
+        for idx in range(int(valid_steps/10)):
+            last_idx = int(idx)*10
+            next_idx = (int(idx) +1) *10
+            metrics.append(eval_map(y_valid[last_idx: next_idx],y_valid_pred[last_idx: next_idx]))
 
-    # Load best model and predict
-    scores = model.predict([test_queries,test_responses])
-    scores = np.squeeze(scores)
-    scores = list(map(str, scores))
-    results_file = open("{}_results.tsv".format(test_tsv_file.split('.tsv')[0]), "w")
-    for idx, test_id in enumerate(test_query_id):
-        if idx % 10 == 0:
-            query_scores = "\t".join(scores[idx:idx+10])
-            results_file.write("{}\t{}\n".format(test_id, query_scores))
-    results_file.close()
+        print('MAP : {}'.format(np.mean(metrics)))
+    # # Load best model and predict
+    # scores = model.predict([test_queries,test_responses])
+    # scores = np.squeeze(scores)
+    # scores = list(map(str, scores))
+    # results_file = open("{}_results.tsv".format(test_tsv_file.split('.tsv')[0]), "w")
+    # for idx, test_id in enumerate(test_query_id):
+    #     if idx % 10 == 0:
+    #         query_scores = "\t".join(scores[idx:idx+10])
+    #         results_file.write("{}\t{}\n".format(test_id, query_scores))
+    # results_file.close()
 
 if __name__ == '__main__':
     fire.Fire(main)

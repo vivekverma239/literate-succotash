@@ -1,7 +1,6 @@
 import tensorflow as tf
-from keras.engine import Layer
-from keras.engine import InputSpec
-from keras import backend as K
+from tensorflow.keras.layers import Layer
+from tensorflow.keras import backend as K
 
 import tensorflow_hub as hub
 
@@ -125,6 +124,11 @@ class ElmoEmbeddingLayer(Layer):
         self.elmo = hub.Module('https://tfhub.dev/google/elmo/2', trainable=self.trainable,
                                name="{}_module".format(self.name))
         self.trainable_weights.extend(tf.trainable_variables(scope="^{}_module/.*".format(self.name)))
+        sess = tf.Session()
+        K.set_session(sess)
+        # Initialize sessions
+        sess.run(tf.global_variables_initializer())
+        sess.run(tf.tables_initializer())
         super(ElmoEmbeddingLayer, self).build(input_shape)
 
     def call(self, x, mask=None):

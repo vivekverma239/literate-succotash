@@ -1,0 +1,3 @@
+TOKENIZER_JSON_PATH = 'data/tokenizer.json'
+MAX_DOC1_LENGTH = 15
+MAX_DOC2_LENGTH = 70
